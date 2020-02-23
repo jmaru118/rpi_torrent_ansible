@@ -1,2 +1,2 @@
-./templates/id_rsa.pub
-./mullvad/*
+templates/id_rsa.pub
+mullvad/*
