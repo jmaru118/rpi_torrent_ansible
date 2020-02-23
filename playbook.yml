@@ -1,0 +1,51 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: rpi_torrent
+  gather_facts: yes
+  vars:
+    packages_to_install: [ transmission-daemon, transmission-cli,
+                transmission-common, vim, cowsay, htop, ranger,
+                openvpn ]
+    password_hash: $6$nnogmJT5ltBE1Y0j$TGsogxKWtQiq.U06yTX6.J1VQ.HyLOetf08vQ8XwARRMm.TGDVzFFfLd5Pj7o/jtgYpX.If5pqhJBl5W2DYkQ1 
+  become: true
+  tasks:
+    - name: create ssh folder
+      file:
+              path: /home/pi/.ssh
+              state: directory
+
+    - name: Copy ssh key to authorized_keys file 
+      template: src=templates/id_rsa.pub dest=/home/pi/.ssh/authorized_keys
+
+    - name: install ubuntu packages
+      apt: 
+            pkg: "{{ packages_to_install }}" 
+            state: present 
+            update_cache: no
+
+    - name: Enable transmisison web-gui
+      template: src=templates/settings.json dest=/etc/transmission-daemon/settings.json
+
+              
+    - name: Copy mullvad files to openvpn folder
+      copy:
+            src: "{{ item }}"
+            dest: /etc/openvpn/
+            owner: pi
+            mode: 600
+      with_fileglob:
+            - ./mullvad/*
+  
+    - name: Change root password
+      user: 
+        name: pi
+        update_password: always
+        password: "{{ password_hash }}"
+
+  handlers:
+    - name: reboot
+      command: shutdown -r now "Ansible updates triggered"
+      #command: ls -lah ./ 
+      async: 0
+      poll: 0
+      ignore_errors: true
