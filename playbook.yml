@@ -26,7 +26,12 @@
     - name: Enable transmisison web-gui
       template: src=templates/settings.json dest=/etc/transmission-daemon/settings.json
 
-              
+    - name: Create torrents folder in home directory
+      file:
+              path: /home/pi/torrents
+              state: directory
+              owner: debian-transmission
+
     - name: Copy mullvad files to openvpn folder
       copy:
             src: "{{ item }}"
