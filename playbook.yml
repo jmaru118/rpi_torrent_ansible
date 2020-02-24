@@ -5,7 +5,7 @@
   vars:
     packages_to_install: [ transmission-daemon, transmission-cli,
                 transmission-common, vim, cowsay, htop, ranger,
-                openvpn ]
+                openvpn, exfat-fuse, exfat-utils ]
     password_hash: $6$nnogmJT5ltBE1Y0j$TGsogxKWtQiq.U06yTX6.J1VQ.HyLOetf08vQ8XwARRMm.TGDVzFFfLd5Pj7o/jtgYpX.If5pqhJBl5W2DYkQ1 
   become: true
   tasks:
@@ -23,14 +23,28 @@
             state: present 
             update_cache: no
 
-    - name: Enable transmisison web-gui
+    - name: Copy transmisison settings file 
       template: src=templates/settings.json dest=/etc/transmission-daemon/settings.json
 
-    - name: Create torrents folder in home directory
+    - name: Create torrents folder for mounting usb
       file:
-              path: /home/pi/torrents
+              path: /media/torrents-usb
               state: directory
-              owner: debian-transmission
+
+    - name: Copy fstab to automount usb drive
+      template: src=templates/fstab dest=/etc/fstab
+
+    - name: mount devices
+      mount:
+              path: /media/torrents-usb
+              src: /dev/disk/by-uuid/5E38-CD46
+              state: mounted
+              fstype: exfat
+
+    - name: Create the downloads folder for torrents
+      file:
+              path: /media/torrents-usb/torrents
+              state: directory
 
     - name: Copy mullvad files to openvpn folder
       copy:
@@ -41,6 +55,19 @@
       with_fileglob:
             - ./mullvad/*
   
+    - name: stop transmission daemon
+      service:
+              name: transmission-daemon
+              state: stopped
+
+    - name: Copy transmisison settings file
+      template: src=templates/settings.json dest=/etc/transmission-daemon/settings.json
+
+    - name: Start transmission daemon
+      service:
+              name: transmission-daemon
+              state: started
+
     - name: Change root password
       user: 
         name: pi
